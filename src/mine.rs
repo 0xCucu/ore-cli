@@ -1,8 +1,10 @@
+
 use std::{
     io::{stdout, Write},
     sync::{atomic::AtomicBool, Arc, Mutex},
     time::Duration,
 };
+use rand::Rng;
 
 use chrono::{Duration as ChronoDuration, Utc};
 use ore::{self, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION, START_AT};
@@ -160,6 +162,8 @@ impl Miner {
         )));
         let signer = self.signer();
         let pubkey = signer.pubkey();
+  
+
         let thread_handles: Vec<_> = (0..threads)
             .map(|i| {
                 std::thread::spawn({
@@ -168,8 +172,9 @@ impl Miner {
                     let mut stdout = stdout();
                     move || {
                         let n = u64::MAX.saturating_div(threads).saturating_mul(i);
+                        let index = rand::thread_rng().gen_range((n+1)..n+10000000000);
                         let mut next_hash: KeccakHash;
-                        let mut nonce: u64 = n;
+                        let mut nonce: u64 = n+index;
                         loop {
                             next_hash = hashv(&[
                                 hash.to_bytes().as_slice(),
