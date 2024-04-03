@@ -20,8 +20,8 @@ use solana_transaction_status::UiTransactionEncoding;
 use crate::Miner;
 
 const RPC_RETRIES: usize = 1;
-const GATEWAY_RETRIES: usize = 10;
-const CONFIRM_RETRIES: usize = 10;
+const GATEWAY_RETRIES: usize = 0;
+const CONFIRM_RETRIES: usize = 0;
 
 impl Miner {
     pub async fn send_and_confirm(&self, ixs: &[Instruction]) -> ClientResult<Signature> {
@@ -123,6 +123,7 @@ impl Miner {
             match client.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
                     log::info!("{:?}", sig);
+                    return Ok(sig);
                     let mut confirm_check = 0;
                     'confirm: loop {
                         match client
@@ -148,7 +149,7 @@ impl Miner {
                         }
 
                         // Retry confirm
-                        std::thread::sleep(Duration::from_millis(500));
+                        // std::thread::sleep(Duration::from_millis(500));
                         confirm_check += 1;
                         if confirm_check.gt(&CONFIRM_RETRIES) {
                             break 'confirm;
@@ -162,7 +163,7 @@ impl Miner {
             stdout.flush().ok();
 
             // Retry with new hash
-            std::thread::sleep(Duration::from_millis(1000));
+            // std::thread::sleep(Duration::from_millis(1000));
             (hash, slot) = client
                 .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())
                 .await
