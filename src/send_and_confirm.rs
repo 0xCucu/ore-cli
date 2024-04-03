@@ -20,8 +20,8 @@ use solana_transaction_status::UiTransactionEncoding;
 use crate::Miner;
 
 const RPC_RETRIES: usize = 1;
-const GATEWAY_RETRIES: usize = 0;
-const CONFIRM_RETRIES: usize = 0;
+const GATEWAY_RETRIES: usize = 1;
+const CONFIRM_RETRIES: usize = 1;
 
 impl Miner {
     pub async fn send_and_confirm(&self, ixs: &[Instruction]) -> ClientResult<Signature> {
@@ -46,59 +46,59 @@ impl Miner {
         let mut tx = Transaction::new_with_payer(ixs, Some(&signer.pubkey()));
         tx.sign(&[&signer], hash);
 
-        // Sim and prepend cu ixs
-        let sim_res = client
-            .simulate_transaction_with_config(
-                &tx,
-                RpcSimulateTransactionConfig {
-                    sig_verify: false,
-                    replace_recent_blockhash: false,
-                    commitment: Some(CommitmentConfig::confirmed()),
-                    encoding: Some(UiTransactionEncoding::Base64),
-                    accounts: None,
-                    min_context_slot: Some(slot),
-                    inner_instructions: false,
-                },
-            )
-            .await;
-        if let Ok(sim_res) = sim_res {
-            match sim_res.value.err {
-                Some(err) => match err {
-                    TransactionError::InstructionError(_, InstructionError::Custom(e)) => {
-                        if e == 1 {
-                            log::info!("Needs reset!");
-                            return Err(ClientError {
-                                request: None,
-                                kind: ClientErrorKind::Custom("Needs reset".into()),
-                            });
-                        } else if e == 3 {
-                            log::info!("Hash invalid!");
-                            return Err(ClientError {
-                                request: None,
-                                kind: ClientErrorKind::Custom("Hash invalid".into()),
-                            });
-                        } else if e == 5 {
-                            return Err(ClientError {
-                                request: None,
-                                kind: ClientErrorKind::Custom("Bus insufficient".into()),
-                            });
-                        } else {
-                            return Err(ClientError {
-                                request: None,
-                                kind: ClientErrorKind::Custom("Sim failed".into()),
-                            });
-                        }
-                    }
-                    _ => {
-                        return Err(ClientError {
-                            request: None,
-                            kind: ClientErrorKind::Custom("Sim failed".into()),
-                        })
-                    }
-                },
-                None => {
+        // // Sim and prepend cu ixs
+        // let sim_res = client
+        //     .simulate_transaction_with_config(
+        //         &tx,
+        //         RpcSimulateTransactionConfig {
+        //             sig_verify: false,
+        //             replace_recent_blockhash: false,
+        //             commitment: Some(CommitmentConfig::confirmed()),
+        //             encoding: Some(UiTransactionEncoding::Base64),
+        //             accounts: None,
+        //             min_context_slot: Some(slot),
+        //             inner_instructions: false,
+        //         },
+        //     )
+        //     .await;
+        // if let Ok(sim_res) = sim_res {
+        //     match sim_res.value.err {
+        //         Some(err) => match err {
+        //             TransactionError::InstructionError(_, InstructionError::Custom(e)) => {
+        //                 if e == 1 {
+        //                     log::info!("Needs reset!");
+        //                     return Err(ClientError {
+        //                         request: None,
+        //                         kind: ClientErrorKind::Custom("Needs reset".into()),
+        //                     });
+        //                 } else if e == 3 {
+        //                     log::info!("Hash invalid!");
+        //                     return Err(ClientError {
+        //                         request: None,
+        //                         kind: ClientErrorKind::Custom("Hash invalid".into()),
+        //                     });
+        //                 } else if e == 5 {
+        //                     return Err(ClientError {
+        //                         request: None,
+        //                         kind: ClientErrorKind::Custom("Bus insufficient".into()),
+        //                     });
+        //                 } else {
+        //                     return Err(ClientError {
+        //                         request: None,
+        //                         kind: ClientErrorKind::Custom("Sim failed".into()),
+        //                     });
+        //                 }
+        //             }
+        //             _ => {
+        //                 return Err(ClientError {
+        //                     request: None,
+        //                     kind: ClientErrorKind::Custom("Sim failed".into()),
+        //                 })
+        //             }
+        //         },
+        //         None => {
                     let cu_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(
-                        sim_res.value.units_consumed.unwrap() as u32 + 1000,
+                        4000 ,
                     );
                     let cu_price_ix =
                         ComputeBudgetInstruction::set_compute_unit_price(self.priority_fee);
@@ -107,14 +107,14 @@ impl Miner {
                     final_ixs.extend_from_slice(ixs);
                     tx = Transaction::new_with_payer(&final_ixs, Some(&signer.pubkey()));
                     tx.sign(&[&signer], hash);
-                }
-            }
-        } else {
-            return Err(ClientError {
-                request: None,
-                kind: ClientErrorKind::Custom("Failed simulation".into()),
-            });
-        };
+                // }
+        //     }
+        // } else {
+        //     return Err(ClientError {
+        //         request: None,
+        //         kind: ClientErrorKind::Custom("Failed simulation".into()),
+        //     });
+        // };
 
         // Loop
         let mut attempts = 0;
