@@ -24,12 +24,12 @@ const GATEWAY_RETRIES: usize = 1;
 const CONFIRM_RETRIES: usize = 1;
 
 impl Miner {
+
     pub async fn send_and_confirm(&self, ixs: &[Instruction]) -> ClientResult<Signature> {
         let mut stdout = stdout();
         let signer = self.signer();
-        let client =
-            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
-
+        let client = &self.client;
+        let exec_client =&self.exec_client;
         // Build tx
         let (mut hash, mut slot) = client
             .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())
@@ -120,13 +120,13 @@ impl Miner {
         let mut attempts = 0;
         loop {
             println!("Attempt: {:?}", attempts);
-            match client.send_transaction_with_config(&tx, send_cfg).await {
+            match exec_client.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
                     log::info!("{:?}", sig);
                     return Ok(sig);
                     let mut confirm_check = 0;
                     'confirm: loop {
-                        match client
+                        match exec_client
                             .confirm_transaction_with_commitment(
                                 &sig,
                                 CommitmentConfig::confirmed(),

@@ -17,12 +17,21 @@ mod utils;
 use std::sync::Arc;
 
 use clap::{command, Parser, Subcommand};
+use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::signature::{read_keypair_file, Keypair};
-
+use solana_sdk::{
+    commitment_config::{CommitmentConfig, CommitmentLevel},
+    compute_budget::ComputeBudgetInstruction,
+    signature::{Signature, Signer},
+    transaction::{Transaction, TransactionError},
+};
 struct Miner {
     pub keypair_filepath: Option<String>,
     pub priority_fee: u64,
     pub cluster: String,
+    pub client: RpcClient,
+    pub exec_client: RpcClient
+
 }
 
 #[derive(Parser, Debug)]
@@ -35,7 +44,13 @@ struct Args {
         default_value = "https://api.mainnet-beta.solana.com"
     )]
     rpc: String,
-
+    #[arg(
+        long,
+        value_name = "EXEC NETWORK_URL",
+        help = "Network address of your RPC provider",
+        default_value = "https://api.mainnet-beta.solana.com"
+    )]
+    exec_rpc: String,
     #[arg(
         long,
         value_name = "KEYPAIR_FILEPATH",
@@ -162,7 +177,12 @@ async fn main() {
     // Initialize miner.
     let args = Args::parse();
     let cluster = args.rpc;
-    let miner = Arc::new(Miner::new(cluster.clone(), args.priority_fee, args.keypair));
+    let exec_cluster = args.exec_rpc;
+    println!("exec_cluster {}, read_cluster {} ",exec_cluster,cluster);
+    let client =  RpcClient::new_with_commitment(cluster.clone(), CommitmentConfig::confirmed());
+    let exec_client =  RpcClient::new_with_commitment(exec_cluster.clone(), CommitmentConfig::confirmed());
+
+    let miner = Arc::new(Miner::new(cluster.clone(), args.priority_fee, args.keypair,client,exec_client));
 
     // Execute user command.
     match args.command {
@@ -200,11 +220,13 @@ async fn main() {
 }
 
 impl Miner {
-    pub fn new(cluster: String, priority_fee: u64, keypair_filepath: Option<String>) -> Self {
+    pub fn new(cluster: String, priority_fee: u64, keypair_filepath: Option<String>,client: RpcClient,exec_client:RpcClient) -> Self {
         Self {
             keypair_filepath,
             priority_fee,
             cluster,
+            client,
+            exec_client,
         }
     }
 
