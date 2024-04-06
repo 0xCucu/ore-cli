@@ -12,7 +12,7 @@ impl Miner {
             RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
         if let Ok(Some(treasury_tokens)) = client.get_token_account(&treasury_tokens_pubkey()).await
         {
-            let treasury = get_treasury(self.cluster.clone()).await;
+            let treasury = get_treasury(&self.client).await;
             let balance = treasury_tokens.token_amount.ui_amount_string;
             println!("{:} ORE", balance);
             println!("Admin: {}", treasury.admin);
