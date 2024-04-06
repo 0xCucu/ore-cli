@@ -6,7 +6,6 @@ use std::{
 use rand::Rng;
 
 use ore::{self, state::Bus, BUS_ADDRESSES, BUS_COUNT, EPOCH_DURATION};
-use rand::Rng;
 use solana_client::nonblocking::rpc_client::RpcClient;
 use solana_sdk::{
     commitment_config::CommitmentConfig,
@@ -46,6 +45,7 @@ impl Miner {
             println!("Balance: {} ORE", balance);
             println!("Claimable: {} ORE", rewards);
             println!("Reward rate: {} ORE", reward_rate);
+            println!("Wallet : {} ", self.signer().pubkey());
 
             // Escape sequence that clears the screen and the scrollback buffer
             println!("\nMining for a valid hash...");
@@ -89,7 +89,7 @@ impl Miner {
                     nonce,
                 );
                 match self
-                    .send_and_confirm(&[cu_limit_ix, cu_price_ix, ix_mine], false, false)
+                    .send_and_confirm(&[cu_limit_ix, cu_price_ix, ix_mine], false, true)
                     .await
                 {
                     Ok(sig) => {
@@ -205,8 +205,7 @@ impl Miner {
     }
 
     pub async fn get_ore_display_balance(&self) -> String {
-        let client =
-            RpcClient::new_with_commitment(self.cluster.clone(), CommitmentConfig::confirmed());
+        let client = &self.client;
         let signer = self.signer();
         let token_account_address = spl_associated_token_account::get_associated_token_address(
             &signer.pubkey(),
